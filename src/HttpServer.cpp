@@ -30,45 +30,27 @@ HttpRequest HttpServer::parseRequest(const char* buffer)
 void HttpServer::handleClient(int client_fd)
 {
     std::cout << "handleClient start\n";
-    while(true)
-    {
+
         char buffer[4096];
 
-        ssize_t bytes =
-            recv(client_fd,
-                 buffer,
-                 sizeof(buffer)-1,
-                 0);
+        ssize_t bytes = recv(client_fd, buffer, sizeof(buffer)-1, 0);
+        std::cout<<"new client request: fd= "<< client_fd<< ", bytes = "<< bytes<< '\n';
+        if(bytes > 0){
+            buffer[bytes] = '\0';
+            std::cout << "Request received\n";
+            HttpRequest request = parseRequest(buffer);
 
-        if(bytes <= 0)
-        {
-            break;
+            Router router;
+            HttpResponse response = router.route(request);
+
+            std::string responseText = response.toString();
+
+            std::cout<< "Response size = "<< responseText.size()<< '\n';
+            send(client_fd,
+                responseText.c_str(),
+                responseText.size(),
+            0);
         }
-
-        buffer[bytes] = '\0';
-        std::cout << "Request received\n";
-        
-
-        HttpRequest request =
-            parseRequest(buffer);
-
-        Router router;
-
-        HttpResponse response =
-            router.route(request);
-
-        std::string responseText =
-            response.toString();
-
-            std::cout
-    << "Response size = "
-    << responseText.size()
-    << '\n';
-        send(client_fd,
-             responseText.c_str(),
-             responseText.size(),
-             0);
-    }
 
     close(client_fd);
 }
