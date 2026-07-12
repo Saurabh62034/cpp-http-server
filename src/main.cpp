@@ -1,7 +1,6 @@
 #include "HttpServer.h"
 #include "Config.h"
 
-
 int main()
 {
     Config config;
@@ -14,6 +13,5 @@ int main()
     );
 
     server.start();
-
     return 0;
 }

@@ -17,3 +17,4 @@ void Logger::error(const std::string& message)
         << message
         << '\n';
 }
+

@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <thread>
+using namespace std;
 
 HttpServer::HttpServer(int port, int threadCount)
     : port_(port),
@@ -14,7 +15,7 @@ HttpServer::HttpServer(int port, int threadCount)
 {
 }
 
-HttpRequest HttpServer::parseRequest(const char* buffer)
+HttpRequest HttpServer::parseRequest(const string& buffer)
 {
     HttpRequest request;
 
@@ -27,22 +28,54 @@ HttpRequest HttpServer::parseRequest(const char* buffer)
     return request;
 }
 
+
+string ReceiveMessage(int client_fd, string& buffer_leftover){
+    cout<<"Trying to receive the message"<<endl;
+
+    char buffer[1024];
+
+    while(true){
+        size_t leftover_pos = buffer_leftover.find("\r\n\r\n");
+        if(leftover_pos != string::npos){
+            string complete_message = buffer_leftover.substr(0,leftover_pos);
+            buffer_leftover = buffer_leftover.substr(leftover_pos+4);
+
+            return complete_message;
+        }
+
+        memset(buffer, 0, sizeof(buffer));
+
+        ssize_t bytes = recv(client_fd, buffer, sizeof(buffer)-1, 0);
+        if(bytes>0){
+            cout<<"message received"<<endl;
+            buffer[bytes]  = '\0';
+            buffer_leftover = buffer_leftover.append(buffer);
+        }
+        if(bytes == 0){
+            cout<<"gracefully client disconnects."<<endl;
+            return "";
+        }
+        if(bytes<1){
+            cout<<"hardware or network error occurred."<<endl;
+            return "";
+        }
+    }
+}
+
 void HttpServer::handleClient(int client_fd)
 {
     std::cout << "handleClient start\n";
+    string buffer_leftover = "";
 
-        char buffer[4096];
+        while(true){
+            string complete_message = ReceiveMessage(client_fd, buffer_leftover);
 
-        ssize_t bytes = recv(client_fd, buffer, sizeof(buffer)-1, 0);
-        std::cout<<"new client request: fd= "<< client_fd<< ", bytes = "<< bytes<< '\n';
-        if(bytes > 0){
-            buffer[bytes] = '\0';
             std::cout << "Request received\n";
-            HttpRequest request = parseRequest(buffer);
+            if(complete_message.empty()) break;
+            HttpRequest request = parseRequest(complete_message);
 
             Router router;
             HttpResponse response = router.route(request);
-
             std::string responseText = response.toString();
 
             std::cout<< "Response size = "<< responseText.size()<< '\n';

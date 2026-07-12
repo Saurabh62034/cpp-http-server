@@ -4,6 +4,8 @@
 #include "HttpResponse.h"
 #include "Router.h"
 #include "ThreadPool.h"
+#include <string.h>
+using namespace std;
 
 class HttpServer
 {
@@ -17,7 +19,7 @@ private:
 
     ThreadPool pool;
 
-    HttpRequest parseRequest(const char* buffer);
+    HttpRequest parseRequest(const string& buffer);
 
     void handleClient(int client_fd);
 };
