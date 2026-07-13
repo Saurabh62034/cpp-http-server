@@ -1,5 +1,4 @@
 #include "HttpServer.h"
-
 #include <iostream>
 #include <sstream>
 
@@ -88,8 +87,7 @@ void HttpServer::handleClient(int client_fd)
     close(client_fd);
 }
 
-void HttpServer::start()
-{
+void HttpServer::start(){
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
 
     if(server_fd < 0)
