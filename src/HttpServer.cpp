@@ -23,6 +23,15 @@ HttpRequest HttpServer::parseRequest(const string& buffer)
     ss >> request.method;
     ss >> request.path;
     ss >> request.version;
+    // ss>> request.content_length;
+    // ss>> request.body_message;
+    // ss>> request.next_message;
+    // ss>> request.next_message2;
+    // ss>> request.next_message3;
+    // ss>> request.next_message4;
+    // ss>> request.next_message5;
+    // ss>> request.next_message6;
+
 
     return request;
 }
@@ -30,20 +39,17 @@ HttpRequest HttpServer::parseRequest(const string& buffer)
 
 string ReceiveMessage(int client_fd, string& buffer_leftover){
     cout<<"Trying to receive the message"<<endl;
-
     char buffer[1024];
 
     while(true){
         size_t leftover_pos = buffer_leftover.find("\r\n\r\n");
         if(leftover_pos != string::npos){
-            string complete_message = buffer_leftover.substr(0,leftover_pos);
+            string header_message = buffer_leftover.substr(0,leftover_pos);
             buffer_leftover = buffer_leftover.substr(leftover_pos+4);
-
-            return complete_message;
+            return header_message;
         }
 
         memset(buffer, 0, sizeof(buffer));
-
         ssize_t bytes = recv(client_fd, buffer, sizeof(buffer)-1, 0);
         if(bytes>0){
             cout<<"message received"<<endl;
@@ -65,6 +71,7 @@ void HttpServer::handleClient(int client_fd)
 {
     std::cout << "handleClient start\n";
     string buffer_leftover = "";
+    int body_length = 0;
 
         while(true){
             string complete_message = ReceiveMessage(client_fd, buffer_leftover);
@@ -72,10 +79,45 @@ void HttpServer::handleClient(int client_fd)
             std::cout << "Request received\n";
             if(complete_message.empty()) break;
             HttpRequest request = parseRequest(complete_message);
+            string left_buffer = complete_message;
+            // cout<<"complete_message = "<<complete_message<<endl;
+            // cout<<"buffer_leftover= "<<buffer_leftover<<endl;
+            int length  = 0;
+            size_t first_line = left_buffer.find("\r\n");
+            left_buffer = left_buffer.substr(first_line+2);
 
+            while (!left_buffer.empty()) {
+                size_t line = left_buffer.find("\r\n");
+                if (line == string::npos) {
+                    std::cout << left_buffer << endl;
+                    break;
+                }
+                
+                string message = left_buffer.substr(0, line);
+                size_t colon = message.find(":");
+
+                request.headers[message.substr(0,colon)] = message.substr(colon+1, message.size());
+                
+                std::cout << message << endl;
+                left_buffer = left_buffer.substr(line + 2); 
+            }
+
+            if(request.headers.count("Content-Length")){
+                cout<<"content length== : "<<stoi(request.headers["Content-Length"])<<endl;
+                length = stoi(request.headers["Content-Length"]);
+                request.body = buffer_leftover.substr(0, length);
+                buffer_leftover = buffer_leftover.substr(length);
+                cout<<"int length = "<<length<<endl;
+            }
+            
+            cout<<"buffer_leftover = "<<buffer_leftover<<endl;
+
+            std::cout<<"path requested = "<<request.method<<endl;
+            
             Router router;
             HttpResponse response = router.route(request);
             std::string responseText = response.toString();
+            
 
             std::cout<< "Response size = "<< responseText.size()<< '\n';
             send(client_fd,

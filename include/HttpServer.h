@@ -11,15 +11,12 @@ class HttpServer
 {
 public:
     HttpServer(int port, int threadCount);
-
     void start();
 
 private:
     int port_;
 
     ThreadPool pool;
-
     HttpRequest parseRequest(const string& buffer);
-
     void handleClient(int client_fd);
 };

@@ -14,17 +14,20 @@
     <p>Tap the button below to test hardware interaction:</p>
     
     <!-- The user interaction trigger -->
-    <button id="vibrateBtn">Vibrate My Phone</button>
+    <button id="vibrateBtn">Create Account</button>
 
     <script>
         document.getElementById('vibrateBtn').addEventListener('click', function() {
+            // 1. Trigger vibration immediately for instant physical feedback
             if (navigator.vibrate) {
-                // Vibrates for 1 second
-                navigator.vibrate(1000);
+                navigator.vibrate(1000); 
                 console.log("Vibration triggered successfully!");
             } else {
-                alert("Vibration API is not supported on this browser/device.");
+                console.log("Vibration API is not supported on this device.");
             }
+
+            window.location.href = '/create-user'; 
+
         });
     </script>
 
