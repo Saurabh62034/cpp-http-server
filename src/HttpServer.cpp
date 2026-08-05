@@ -102,15 +102,32 @@ void HttpServer::handleClient(int client_fd)
                 left_buffer = left_buffer.substr(line + 2); 
             }
 
+
+            char buffer[1024];
             if(request.headers.count("Content-Length")){
+
                 cout<<"content length== : "<<stoi(request.headers["Content-Length"])<<endl;
                 length = stoi(request.headers["Content-Length"]);
+
+                while(buffer_leftover.size()<length){
+                    ssize_t bytes = recv(client_fd, buffer, sizeof(buffer)-1, 0);
+                    if(bytes>0){
+                        buffer[bytes] = '\0';
+                        buffer_leftover = buffer_leftover.append(buffer,bytes);
+                    }
+                    else if(bytes == 0){
+                        cout<<"user disconnects gracefully.";
+                        break;
+                    }
+                    else{
+                        cout<<"something went wrong.";
+                        break;
+                    }
+                }
                 request.body = buffer_leftover.substr(0, length);
                 buffer_leftover = buffer_leftover.substr(length);
                 cout<<"int length = "<<length<<endl;
             }
-            
-            cout<<"buffer_leftover = "<<buffer_leftover<<endl;
 
             std::cout<<"path requested = "<<request.method<<endl;
             
