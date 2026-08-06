@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <unordered_map>
 
 
 std::string readFile(const std::string& path)
@@ -54,13 +55,31 @@ HttpResponse Router::route(const HttpRequest& request)
         response.contentType = "text/html";
         response.body = readFile("../public/after-save.html");
         size_t pos = response.body.find("{{BODY}}");
-
+        std::string name = "";
+        if(request.form.count("name")){
+            name = request.form.at("name");
+        }
         if (pos != std::string::npos)
         {
             response.body.replace(
                 pos,
                 8,               // length of "{{BODY}}"
-                request.body
+                name
+            );
+        }
+
+        size_t email_pos = response.body.find("{{EMAIL}}");
+
+        std::string email = "";
+        if(request.form.count("email")){
+            email = request.form.at("email");
+        }
+
+        if(email_pos!=std::string::npos){
+            response.body.replace(
+                email_pos,
+                9,
+                email
             );
         }
     }

@@ -18,6 +18,7 @@ Rather than relying on existing web frameworks, this project incrementally imple
 - ✅ HTTP Request-Line parsing
 - ✅ HTTP header parsing
 - ✅ POST request body extraction using `Content-Length`
+- ✅ Parsing of `application/x-www-form-urlencoded` request bodies
 - ✅ HTTP request routing
 - ✅ Basic HTTP response generation
 - ✅ Support for custom response headers
@@ -29,7 +30,7 @@ Rather than relying on existing web frameworks, this project incrementally imple
 - ✅ Per-connection leftover buffer for request reassembly
 - ✅ Proper handling of TCP's byte-stream nature
 - ✅ Separation of HTTP headers from request body
-- ✅ Body extraction while preserving bytes belonging to the next request
+- ✅ Body extraction while preserving bytes belonging to subsequent requests
 
 ### Configuration
 - ✅ Configurable server port
@@ -44,6 +45,7 @@ Rather than relying on existing web frameworks, this project incrementally imple
 ### Utilities
 - ✅ Configurable logger
 - ✅ Static HTML file loading
+- ✅ Form data parser (`application/x-www-form-urlencoded`)
 
 ---
 
@@ -62,28 +64,35 @@ Rather than relying on existing web frameworks, this project incrementally imple
       (Buffer + Leftover Bytes)
                       │
           HTTP Request Parser
-      ┌───────────────┴───────────────┐
-      │                               │
- Request-Line                  Header Parser
-(Method, Path, Version)      (Key-Value Map)
-                                      │
-                                      ▼
-                           Content-Length Parser
-                                      │
-                                      ▼
-                             Body Extraction
-                                      │
-                                      ▼
-                                  Router
-                                      │
-                                      ▼
+      ┌───────────────┴────────────────┐
+      │                                │
+ Request-Line                   Header Parser
+(Method, Path, Version)      (Key-Value Headers)
+                                       │
+                                       ▼
+                            Content-Length Parser
+                                       │
+                                       ▼
+                              Request Body Reader
+                                       │
+                                       ▼
+                        Form URL-Encoded Parser
+                     (key=value&key=value...)
+                                       │
+                                       ▼
+                                HttpRequest
+                                       │
+                                       ▼
+                                   Router
+                                       │
+                                       ▼
                               Request Handler
-                                      │
-                                      ▼
+                                       │
+                                       ▼
                            HTTP Response Builder
-                                      │
-                                      ▼
-                                   send()
+                                       │
+                                       ▼
+                                    send()
 ```
 
 ---
@@ -128,17 +137,18 @@ curl http://localhost:9090/
 
 ---
 
-## Current HTTP Parser
+## Current Request Processing Pipeline
 
-The server currently performs the following parsing pipeline:
+The server currently processes an HTTP request in the following stages:
 
-1. Reassembles TCP byte streams into complete HTTP requests.
+1. Reassembles TCP byte streams into complete HTTP headers.
 2. Parses the HTTP Request-Line (`METHOD PATH VERSION`).
 3. Parses HTTP headers into a key-value map.
-4. Detects the end of headers (`\r\n\r\n`).
-5. Uses the `Content-Length` header to determine body size.
-6. Extracts the request body while preserving any bytes that belong to the next HTTP request.
-7. Produces a structured `HttpRequest` object consumed by the router.
+4. Detects the end of headers using `\r\n\r\n`.
+5. Reads the request body using the `Content-Length` header.
+6. Preserves any remaining bytes belonging to subsequent requests.
+7. Parses `application/x-www-form-urlencoded` request bodies into key-value pairs.
+8. Produces a structured `HttpRequest` object that is consumed by the router.
 
 ---
 
@@ -147,16 +157,17 @@ The server currently performs the following parsing pipeline:
 This project helped me understand:
 
 - TCP is a byte-stream protocol rather than a message protocol.
-- Why multiple `recv()` calls may be required to receive one HTTP request.
+- Why a single `recv()` call cannot be assumed to contain one complete HTTP request.
+- Why multiple `recv()` calls may be required to receive a complete request body.
 - Why one `recv()` may also contain multiple HTTP requests.
 - How production servers reconstruct HTTP requests from TCP streams.
 - The difference between the Request-Line, Headers, and Body in HTTP.
 - How `Content-Length` determines request body boundaries.
-- Why HTTP parsing must distinguish protocol framing from application data.
+- How browsers encode HTML form data using `application/x-www-form-urlencoded`.
+- Why protocol parsing and application-level parsing should remain separate.
 - How browsers implement the Post/Redirect/Get (PRG) workflow.
 - Thread pool design using mutexes and condition variables.
-- Request routing without using existing web frameworks.
-- Organizing a growing systems project into modular components.
+- Organizing a growing systems project into modular, single-responsibility components.
 
 ---
 
@@ -167,18 +178,18 @@ This project helped me understand:
 - [x] HTTP Request-Line parsing
 - [x] HTTP header parsing
 - [x] POST request body extraction
-- [ ] URL decoding (`application/x-www-form-urlencoded`)
+- [x] Form URL-encoded body parsing
+- [ ] URL decoding (`%20`, `%40`, `+`, etc.)
 - [ ] Query parameter parsing
 - [ ] JSON request body parsing
 - [ ] Multipart form-data parsing
 - [ ] Cookie parsing
-- [ ] HTTP status code improvements
 - [ ] MIME type detection
 - [ ] Static file serving
 - [ ] Directory listing
 - [ ] Persistent (Keep-Alive) connections
 - [ ] Chunked Transfer-Encoding
-- [ ] HTTP/1.1 compliance improvements
+- [ ] Full HTTP/1.1 compliance
 
 ### Performance
 
@@ -190,7 +201,7 @@ This project helped me understand:
 
 ### Systems
 
-- [ ] HTTP parser refactoring into a dedicated `HttpParser`
+- [ ] Refactor HTTP parsing into a dedicated `HttpParser`
 - [ ] Event-driven I/O (`epoll`)
 - [ ] Non-blocking sockets
 - [ ] Connection manager
@@ -207,3 +218,5 @@ This project helped me understand:
 ## Future Goals
 
 The long-term objective is to evolve this project into a lightweight production-style HTTP server by implementing more of the HTTP/1.1 specification, improving performance, and exploring lower-level systems concepts such as efficient I/O multiplexing, scalable connection handling, and robust request parsing.
+
+As the project evolves, I also plan to deepen my understanding of systems programming concepts such as event-driven architectures, non-blocking I/O, efficient memory management, and high-performance server design.

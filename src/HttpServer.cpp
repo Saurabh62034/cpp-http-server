@@ -1,4 +1,5 @@
 #include "HttpServer.h"
+#include "FormParser.h"
 #include <iostream>
 #include <sstream>
 
@@ -97,8 +98,6 @@ void HttpServer::handleClient(int client_fd)
                 size_t colon = message.find(":");
 
                 request.headers[message.substr(0,colon)] = message.substr(colon+1, message.size());
-                
-                std::cout << message << endl;
                 left_buffer = left_buffer.substr(line + 2); 
             }
 
@@ -130,6 +129,14 @@ void HttpServer::handleClient(int client_fd)
             }
             cout<<"body content = "<<request.body<<endl;
             std::cout<<"path requested = "<<request.method<<endl;
+            FormParser parser;
+            if(request.headers["Content-Type"] == " application/x-www-form-urlencoded"){
+                
+                request.form = parser.parse(request.body);
+            }
+            for(auto &p:request.form){
+                cout<<p.first<<": "<<p.second<<endl;
+            }
             
             Router router;
             HttpResponse response = router.route(request);
