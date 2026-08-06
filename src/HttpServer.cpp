@@ -102,7 +102,6 @@ void HttpServer::handleClient(int client_fd)
                 left_buffer = left_buffer.substr(line + 2); 
             }
 
-
             char buffer[1024];
             if(request.headers.count("Content-Length")){
 
@@ -110,6 +109,7 @@ void HttpServer::handleClient(int client_fd)
                 length = stoi(request.headers["Content-Length"]);
 
                 while(buffer_leftover.size()<length){
+                    cout<<"Body was incomplete so calling recv again"<<endl;
                     ssize_t bytes = recv(client_fd, buffer, sizeof(buffer)-1, 0);
                     if(bytes>0){
                         buffer[bytes] = '\0';
@@ -128,7 +128,7 @@ void HttpServer::handleClient(int client_fd)
                 buffer_leftover = buffer_leftover.substr(length);
                 cout<<"int length = "<<length<<endl;
             }
-
+            cout<<"body content = "<<request.body<<endl;
             std::cout<<"path requested = "<<request.method<<endl;
             
             Router router;
