@@ -43,7 +43,7 @@ HttpResponse Router::route(const HttpRequest& request)
         response.body = readFile("../public/create-user.html");
     }
     else if(request.path == "/saveData" && request.method == "POST"){
-        SaveData save_data(request.body);
+        SaveData save_data(request.form);
         save_data.Store();
         
         response.statusCode = 303; 

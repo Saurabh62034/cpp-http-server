@@ -179,6 +179,7 @@ This project helped me understand:
 - [x] HTTP header parsing
 - [x] POST request body extraction
 - [x] Form URL-encoded body parsing
+- [x] Post/Redirect/Get (PRG) flow using 303 redirects
 - [ ] URL decoding (`%20`, `%40`, `+`, etc.)
 - [ ] Query parameter parsing
 - [ ] JSON request body parsing

@@ -1,17 +1,29 @@
 #pragma once
 #include<iostream>
 #include <string>
+#include <fstream>
 
 
 class SaveData{
     public:
-    std::string body_message=""; 
-    SaveData(std::string body_message){
+    std::unordered_map<std::string, std::string> body_message; 
+    SaveData(std::unordered_map<std::string, std::string> body_message){
         this->body_message = body_message;
     }
 
     void Store(){
-        std::cout<<"Ready store the data"<<std::endl;
+        std::cout<<"Ready to store the data"<<std::endl;
+        std::ofstream myfile("../public/data-folder/userdata.txt", std::ios::app);
+        if(!myfile.is_open()){
+            return;
+        }
+        myfile<<"{\n";
+        for(auto &p:body_message){
+            myfile<<p.first<<": "<<p.second<<"\n";
+        }
+        myfile<<"}\n";
+        myfile.close();
+
     }
 
 };
