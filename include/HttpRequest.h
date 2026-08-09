@@ -12,4 +12,6 @@ public:
     std::unordered_map<std::string, std::string> headers;
     std::string body;
     std::unordered_map<std::string, std::string> form;
+    std::string query;
+    std::unordered_map<std::string, std::string> queryParams;
 };

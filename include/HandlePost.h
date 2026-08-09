@@ -12,7 +12,6 @@ class SaveData{
     }
 
     void Store(){
-        std::cout<<"Ready to store the data"<<std::endl;
         std::ofstream myfile("../public/data-folder/userdata.txt", std::ios::app);
         if(!myfile.is_open()){
             return;

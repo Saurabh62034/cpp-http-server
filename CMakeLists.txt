@@ -17,4 +17,5 @@ add_executable(
     src/Logger.cpp
     src/Config.cpp
     src/FormParser.cpp
+    src/UrlDecoder.cpp
 )

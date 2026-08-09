@@ -1,5 +1,6 @@
 #include "HttpServer.h"
 #include "FormParser.h"
+#include "UrlDecoder.h"
 #include <iostream>
 #include <sstream>
 
@@ -20,26 +21,64 @@ HttpRequest HttpServer::parseRequest(const string& buffer)
     HttpRequest request;
 
     std::stringstream ss(buffer);
-
     ss >> request.method;
     ss >> request.path;
     ss >> request.version;
-    // ss>> request.content_length;
-    // ss>> request.body_message;
-    // ss>> request.next_message;
-    // ss>> request.next_message2;
-    // ss>> request.next_message3;
-    // ss>> request.next_message4;
-    // ss>> request.next_message5;
-    // ss>> request.next_message6;
 
+    size_t query_pos = request.path.find("?");
+    string query = "";
+    if(query_pos != string::npos){
+        query = request.path.substr(query_pos+1);
+        request.path = request.path.substr(0,query_pos);
+    }
 
+    request.path = UrlDecoder::decode(request.path);
+    request.query = query;
+    parseQueryParams(request);
     return request;
 }
 
+std::string trim(const std::string& value)
+{
+    size_t start = value.find_first_not_of(" \t");
+    size_t end = value.find_last_not_of(" \t");
+
+    if (start == std::string::npos) {
+        return "";
+    }
+
+    return value.substr(start, end - start + 1);
+}
+
+void parseQueryParams(HttpRequest &request){
+    string query = request.query;
+    string params;
+    while(!query.empty()){
+        size_t amp_pos = query.find("&");
+        if(amp_pos == string::npos){
+            params = query;
+            query.clear();
+        }
+        else{
+            params = query.substr(0,amp_pos);
+            query = query.substr(amp_pos+1);
+        }
+        
+        size_t key_size = params.find("=");
+        if(key_size == string::npos){
+            string key = UrlDecoder::decodeQueryComponent(params);
+            request.queryParams[key]="";
+            continue;
+        }
+        string key = params.substr(0,key_size);
+        string value = params.substr(key_size+1);
+        key = UrlDecoder::decodeQueryComponent(key);
+        value = UrlDecoder::decodeQueryComponent(value);
+        request.queryParams[key] = value;
+    }
+}
 
 string ReceiveMessage(int client_fd, string& buffer_leftover){
-    cout<<"Trying to receive the message"<<endl;
     char buffer[1024];
 
     while(true){
@@ -53,7 +92,6 @@ string ReceiveMessage(int client_fd, string& buffer_leftover){
         memset(buffer, 0, sizeof(buffer));
         ssize_t bytes = recv(client_fd, buffer, sizeof(buffer)-1, 0);
         if(bytes>0){
-            cout<<"message received"<<endl;
             buffer[bytes]  = '\0';
             buffer_leftover = buffer_leftover.append(buffer);
         }
@@ -70,19 +108,18 @@ string ReceiveMessage(int client_fd, string& buffer_leftover){
 
 void HttpServer::handleClient(int client_fd)
 {
-    std::cout << "handleClient start\n";
     string buffer_leftover = "";
     int body_length = 0;
 
         while(true){
-            string complete_message = ReceiveMessage(client_fd, buffer_leftover);
+            string headers_data = ReceiveMessage(client_fd, buffer_leftover);
 
-            std::cout << "Request received\n";
-            if(complete_message.empty()) break;
-            HttpRequest request = parseRequest(complete_message);
-            string left_buffer = complete_message;
-            // cout<<"complete_message = "<<complete_message<<endl;
-            // cout<<"buffer_leftover= "<<buffer_leftover<<endl;
+            if(headers_data.empty()) break;
+            HttpRequest request = parseRequest(headers_data);
+            cout<<"decoded path = "<<request.path<<endl;
+            
+
+            string left_buffer = headers_data;
             int length  = 0;
             size_t first_line = left_buffer.find("\r\n");
             left_buffer = left_buffer.substr(first_line+2);
@@ -90,25 +127,30 @@ void HttpServer::handleClient(int client_fd)
             while (!left_buffer.empty()) {
                 size_t line = left_buffer.find("\r\n");
                 if (line == string::npos) {
-                    std::cout << left_buffer << endl;
                     break;
                 }
-                
                 string message = left_buffer.substr(0, line);
                 size_t colon = message.find(":");
+                 // Invalid header line
+                if (colon == string::npos)
+                {
+                    left_buffer = left_buffer.substr(line + 2);
+                    continue;
+                }
 
-                request.headers[message.substr(0,colon)] = message.substr(colon+1, message.size());
+                std::string key = trim(message.substr(0, colon));
+                std::string value = trim(message.substr(colon + 1));
+
+                request.headers[key] = value;
                 left_buffer = left_buffer.substr(line + 2); 
             }
 
             char buffer[1024];
             if(request.headers.count("Content-Length")){
 
-                cout<<"content length== : "<<stoi(request.headers["Content-Length"])<<endl;
                 length = stoi(request.headers["Content-Length"]);
 
                 while(buffer_leftover.size()<length){
-                    cout<<"Body was incomplete so calling recv again"<<endl;
                     ssize_t bytes = recv(client_fd, buffer, sizeof(buffer)-1, 0);
                     if(bytes>0){
                         buffer[bytes] = '\0';
@@ -125,31 +167,37 @@ void HttpServer::handleClient(int client_fd)
                 }
                 request.body = buffer_leftover.substr(0, length);
                 buffer_leftover = buffer_leftover.substr(length);
-                cout<<"int length = "<<length<<endl;
             }
-            cout<<"body content = "<<request.body<<endl;
-            std::cout<<"path requested = "<<request.method<<endl;
             FormParser parser;
-            if(request.headers["Content-Type"] == " application/x-www-form-urlencoded"){
-                
+            if(request.headers["Content-Type"] == "application/x-www-form-urlencoded"){
                 request.form = parser.parse(request.body);
             }
-            for(auto &p:request.form){
-                cout<<p.first<<": "<<p.second<<endl;
+
+            bool keep_alive = false;
+            if (request.version == "HTTP/1.1") {
+                keep_alive = true;
+                if (request.headers.count("Connection") &&
+                    request.headers["Connection"] == "close") {
+                    keep_alive = false;
+                }
             }
-            
+            else if (request.version == "HTTP/1.0") {
+                if (request.headers.count("Connection") &&
+                    request.headers["Connection"] == "Keep-Alive") {
+                    keep_alive = true;
+                }
+            }
             Router router;
             HttpResponse response = router.route(request);
             std::string responseText = response.toString();
-            
-
-            std::cout<< "Response size = "<< responseText.size()<< '\n';
             send(client_fd,
                 responseText.c_str(),
                 responseText.size(),
             0);
+            if (!keep_alive) {
+                break;
+            }
         }
-
     close(client_fd);
 }
 
