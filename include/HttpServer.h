@@ -4,6 +4,7 @@
 #include "HttpResponse.h"
 #include "Router.h"
 #include "ThreadPool.h"
+#include "HttpParser.h"
 #include <string.h>
 using namespace std;
 
@@ -17,6 +18,6 @@ private:
     int port_;
 
     ThreadPool pool;
-    HttpRequest parseRequest(const string& buffer);
+    HttpParser parser;
     void handleClient(int client_fd);
 };

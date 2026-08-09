@@ -10,37 +10,67 @@ Rather than relying on existing web frameworks, this project incrementally imple
 
 ### Networking
 
-* ✅ TCP socket server using POSIX sockets
-* ✅ Client connection handling using `accept()`
-* ✅ Request reception using `recv()`
-* ✅ HTTP response transmission using `send()`
+- ✅ TCP socket server using POSIX sockets
+- ✅ Client connection handling using `accept()`
+- ✅ Request reception using `recv()`
+- ✅ Reliable HTTP response transmission using `sendAll()`
+- ✅ Configurable listening port
 
 ### HTTP Processing
 
-* ✅ HTTP Request-Line parsing
-* ✅ HTTP header parsing
-* ✅ HTTP header value trimming
-* ✅ URL decoding
-* ✅ Query parameter parsing
-* ✅ POST request body extraction using `Content-Length`
-* ✅ Parsing of `application/x-www-form-urlencoded` request bodies
-* ✅ HTTP request routing
-* ✅ Basic HTTP response generation
-* ✅ Support for custom response headers
-* ✅ Basic Post/Redirect/Get (PRG) flow using **303 See Other**
-* ✅ MIME type detection
-* ✅ Static file serving
-* ✅ Nested static file serving
-* ✅ Static file path traversal protection
+- ✅ HTTP Request-Line parsing
+- ✅ HTTP header parsing
+- ✅ HTTP header value trimming
+- ✅ URL decoding
+- ✅ Query parameter parsing
+- ✅ POST request body extraction using `Content-Length`
+- ✅ Parsing of `application/x-www-form-urlencoded` request bodies
+- ✅ HTTP request routing
+- ✅ Basic HTTP response generation
+- ✅ Support for custom response headers
+- ✅ Basic Post/Redirect/Get (PRG) flow using **303 See Other**
+- ✅ MIME type detection
+- ✅ Static file serving
+- ✅ Nested static file serving
+- ✅ Static file path traversal protection
+- ✅ HTTP/1.1 persistent connections
+- ✅ HTTP/1.0 Keep-Alive support
+- ✅ `Connection: close` handling
+- ✅ `Connection: keep-alive` response handling
+
+### HTTP Parser
+
+HTTP request parsing has been separated from the server's connection-handling logic using a dedicated `HttpParser`.
+
+The parser currently handles:
+
+- ✅ Request-Line parsing
+- ✅ HTTP method extraction
+- ✅ Request target extraction
+- ✅ HTTP version extraction
+- ✅ Query string extraction
+- ✅ URL path decoding
+- ✅ Query parameter parsing
+- ✅ Query parameter URL decoding
+- ✅ HTTP header parsing
+- ✅ Header whitespace trimming
+- ✅ `Content-Length` parsing
+- ✅ Request body extraction
+- ✅ TCP-buffer-aware body reading
+
+The parser produces a structured `HttpRequest` object that is consumed by the router and application layer.
 
 ### TCP Stream Handling
 
-* ✅ Incremental request buffering
-* ✅ Support for partial TCP reads
-* ✅ Per-connection leftover buffer for request reassembly
-* ✅ Proper handling of TCP's byte-stream nature
-* ✅ Separation of HTTP headers from request body
-* ✅ Body extraction while preserving bytes belonging to subsequent requests
+- ✅ Incremental request buffering
+- ✅ Support for partial TCP reads
+- ✅ Per-connection leftover buffer for request reassembly
+- ✅ Proper handling of TCP's byte-stream nature
+- ✅ Separation of HTTP headers from request body
+- ✅ Body extraction while preserving bytes belonging to subsequent requests
+- ✅ Multiple HTTP requests over a single TCP connection
+- ✅ Persistent connections using HTTP/1.1 Keep-Alive
+- ✅ Correct handling of `Connection: close`
 
 ### Static File Serving
 
@@ -64,253 +94,436 @@ public/css/style.css
 GET /script.js
         ↓
 public/script.js
-```
 
 MIME types are automatically detected based on the file extension.
 
 Examples:
 
-```text
 .html  → text/html
 .css   → text/css
 .js    → application/javascript
 .json  → application/json
 .png   → image/png
 .jpg   → image/jpeg
-```
 
 Static file resolution also protects against path traversal attempts such as:
 
-```text
 /../../etc/passwd
 /%2e%2e/%2e%2e/etc/passwd
-```
 
-### Configuration
+The requested URL is decoded and validated before resolving the corresponding filesystem path.
 
-* ✅ Configurable server port
-* ✅ Configurable thread pool size
-* ✅ External configuration file (`server.conf`)
-
-### Concurrency
-
-* ✅ Fixed-size thread pool
-* ✅ Task queue using mutexes and condition variables
-* ✅ Concurrent client request handling
-
-### Utilities
-
-* ✅ Configurable logger
-* ✅ URL decoder
-* ✅ MIME type detection utility
-* ✅ Static file loader
-* ✅ Form data parser (`application/x-www-form-urlencoded`)
-* ✅ Query parameter parser
-
----
-
-## Architecture
-
-```text
-                         Client
-                           │
-                       TCP Socket
-                           │
-                        accept()
-                           │
-                         recv()
-                           │
-                TCP Stream Reassembly
-              (Buffer + Leftover Bytes)
-                           │
-                           ▼
-                    HTTP Request Parser
-                           │
-              ┌────────────┴────────────┐
-              │                         │
-        Request-Line              Header Parser
-      (Method, Target, Version)   (Key-Value Headers)
-              │                         │
-              │                         ▼
-              │                  Content-Length
-              │                       Parser
-              │                         │
-              │                         ▼
-              │                  Request Body Reader
-              │                         │
-              ▼                         ▼
-        URL / Query              Form URL-Encoding
-         Processing                   Parser
-              │                         │
-              └────────────┬────────────┘
-                           ▼
-                      HttpRequest
-                           │
-                           ▼
-                         Router
-                           │
-              ┌────────────┴────────────┐
-              │                         │
-        Application Routes         Static Files
-              │                         │
-       /saveData, etc.          File Resolution
-              │                         │
-              │                  Path Validation
-              │                         │
-              │                   MIME Detection
-              │                         │
-              └────────────┬────────────┘
-                           ▼
-                    HttpResponse
-                           │
-                           ▼
-                         send()
-```
-
----
-
-## Tech Stack
-
-* C++17
-* POSIX Sockets
-* STL
-* CMake
-* `std::thread`
-* `std::mutex`
-* `std::condition_variable`
-* `std::unordered_map`
-* `std::filesystem`
-
----
-
-## Build
-
-```bash
+Configuration
+✅ Configurable server port
+✅ Configurable thread pool size
+✅ External configuration file (server.conf)
+Concurrency
+✅ Fixed-size thread pool
+✅ Task queue using mutexes and condition variables
+✅ Concurrent client connection handling
+✅ Multiple requests handled sequentially on a persistent connection
+Utilities
+✅ Configurable logger
+✅ URL decoder
+✅ MIME type detection utility
+✅ Static file loader
+✅ Form data parser (application/x-www-form-urlencoded)
+✅ Query parameter parser
+Architecture
+                              Client
+                                │
+                            TCP Socket
+                                │
+                             accept()
+                                │
+                                ▼
+                       Thread Pool / Worker
+                                │
+                                ▼
+                              recv()
+                                │
+                                ▼
+                    TCP Stream Reassembly
+                  (Buffer + Leftover Bytes)
+                                │
+                                ▼
+                           HttpParser
+                                │
+             ┌──────────────────┼──────────────────┐
+             │                  │                  │
+             ▼                  ▼                  ▼
+        Request-Line       HTTP Headers       Query String
+        Method/Target/     Key-Value Map       Extraction
+        Version                 │                  │
+             │                  │                  ▼
+             │                  ▼             URL Decoding
+             │            Content-Length      Query Params
+             │                  │
+             │                  ▼
+             │            Request Body
+             │                  │
+             ▼                  ▼
+                       HttpRequest
+                             │
+                             ▼
+                           Router
+                             │
+                ┌────────────┴────────────┐
+                │                         │
+                ▼                         ▼
+        Application Routes          Static Files
+                │                         │
+         /saveData, etc.          File Resolution
+                                          │
+                                   Path Validation
+                                          │
+                                    MIME Detection
+                │                         │
+                └────────────┬────────────┘
+                             ▼
+                       HttpResponse
+                             │
+                             ▼
+                          sendAll()
+                             │
+                             ▼
+                    Keep-Alive Decision
+                             │
+                  ┌──────────┴──────────┐
+                  │                     │
+               Keep Alive            Close
+                  │                     │
+                  ▼                     ▼
+             Next Request          close()
+Tech Stack
+C++17
+POSIX Sockets
+STL
+CMake
+std::thread
+std::mutex
+std::condition_variable
+std::unordered_map
+std::filesystem
+Build
 mkdir build
 cd build
 cmake ..
 make
-```
-
----
-
-## Run
-
-```bash
+Run
 ./http_server
-```
 
-The server listens on the configured port (**9090** by default).
+The server listens on the configured port (9090 by default).
 
 Example:
 
-```bash
 curl http://localhost:9090/
-```
 
 Static file example:
 
-```bash
 curl http://localhost:9090/style.css
-```
 
----
+Query parameter example:
 
-## Current Request Processing Pipeline
+curl "http://localhost:9090/about?name=Saurabh"
+
+POST request example:
+
+curl -X POST \
+     -H "Content-Type: application/x-www-form-urlencoded" \
+     -d "name=Saurabh&email=test@example.com" \
+     http://localhost:9090/saveData
+Persistent Connection Example
+
+The server supports multiple HTTP requests over the same TCP connection.
+
+For example:
+
+GET /about.html
+GET /css/style.css
+Connection: close
+
+can be sent over the same connection.
+
+Example using netcat:
+
+printf 'GET /about.html HTTP/1.1\r\nHost: localhost:9090\r\n\r\nGET /css/style.css HTTP/1.1\r\nHost: localhost:9090\r\nConnection: close\r\n\r\n' | nc 127.0.0.1 9090
+
+The server processes both requests from the same TCP connection and closes the connection after the second response.
+
+Current Request Processing Pipeline
 
 The server currently processes an HTTP request through the following stages:
 
-1. Reassembles TCP byte streams into complete HTTP headers.
-2. Parses the HTTP Request-Line (`METHOD PATH VERSION`).
-3. Separates the request path from the query string.
-4. URL-decodes the request path.
-5. Parses and URL-decodes query parameters.
-6. Parses HTTP headers into a key-value map.
-7. Trims whitespace from HTTP header names and values.
-8. Detects the end of headers using `\r\n\r\n`.
-9. Reads the request body using the `Content-Length` header.
-10. Preserves any remaining bytes belonging to subsequent requests.
-11. Parses `application/x-www-form-urlencoded` request bodies into key-value pairs.
-12. Produces a structured `HttpRequest` object consumed by the router.
-13. Routes application-specific requests.
-14. Resolves static files safely from the `public/` directory.
-15. Determines the appropriate MIME type for static files.
-16. Builds and transmits the HTTP response.
-
----
-
-## What I Learned
+Accepts a TCP connection using accept().
+Assigns the connection to a thread-pool worker.
+Receives bytes from the TCP socket using recv().
+Reassembles the TCP byte stream using a per-connection leftover buffer.
+Detects the HTTP header boundary using \r\n\r\n.
+Passes the HTTP message to HttpParser.
+Parses the HTTP Request-Line (METHOD PATH VERSION).
+Separates the request path from the query string.
+URL-decodes the request path.
+Parses and URL-decodes query parameters.
+Parses HTTP headers into a key-value map.
+Trims whitespace from HTTP header names and values.
+Detects Content-Length.
+Reads additional TCP data when the request body has not been completely received.
+Extracts exactly Content-Length bytes as the request body.
+Preserves any remaining bytes belonging to subsequent requests.
+Parses application/x-www-form-urlencoded request bodies using FormParser.
+Determines whether the connection should remain persistent.
+Routes the request through Router.
+Resolves and validates static file paths when required.
+Determines the appropriate MIME type for static files.
+Builds an HttpResponse.
+Sends the complete response using sendAll().
+Continues processing additional requests when Keep-Alive is enabled.
+Closes the client socket when the connection is no longer persistent.
+What I Learned
 
 This project helped me understand:
 
-* TCP is a byte-stream protocol rather than a message protocol.
-* Why a single `recv()` call cannot be assumed to contain one complete HTTP request.
-* Why multiple `recv()` calls may be required to receive a complete request body.
-* Why one `recv()` may also contain multiple HTTP requests.
-* How production servers reconstruct HTTP requests from TCP streams.
-* The difference between the Request-Line, Headers, and Body in HTTP.
-* How `Content-Length` determines request body boundaries.
-* How URL encoding works in request paths and query parameters.
-* The difference between `%2B` and `+` when decoding query parameters.
-* How query strings are separated from request paths.
-* How browsers encode HTML form data using `application/x-www-form-urlencoded`.
-* Why protocol parsing and application-level parsing should remain separate.
-* How browsers implement the Post/Redirect/Get (PRG) workflow.
-* MIME types and their role in HTTP responses.
-* How static files can be resolved from a filesystem and served over HTTP.
-* Why static file servers must protect against path traversal vulnerabilities.
-* Thread pool design using mutexes and condition variables.
-* Organizing a growing systems project into modular, single-responsibility components.
+TCP and Networking
+TCP is a byte-stream protocol rather than a message protocol.
+Why a single recv() call cannot be assumed to contain one complete HTTP request.
+Why multiple recv() calls may be required to receive a complete request body.
+Why a single recv() may contain multiple HTTP requests.
+How application-level TCP stream reassembly works.
+How leftover bytes from one request can belong to the next request.
+Why response transmission may also require multiple send() calls.
+How sendAll() ensures the complete response is transmitted.
+HTTP
+The difference between the Request-Line, Headers, and Body.
+How Content-Length determines request body boundaries.
+How HTTP/1.1 persistent connections work.
+How Connection: close changes connection behavior.
+How HTTP/1.0 Keep-Alive differs from HTTP/1.1.
+How response headers communicate connection state.
+How HTTP status codes are represented in responses.
+How browsers implement the Post/Redirect/Get (PRG) workflow.
+How MIME types describe HTTP response content.
+URL and Form Encoding
+How URL encoding works in request paths and query parameters.
+The difference between %2B and + when decoding query parameters.
+How query strings are separated from request paths.
+How browsers encode HTML form data using application/x-www-form-urlencoded.
+Why query parameter decoding and form decoding have different semantics.
+Static File Serving
+How HTTP servers map URLs to filesystem paths.
+How std::filesystem can be used for filesystem operations.
+How MIME types are determined from file extensions.
+Why static file servers must protect against path traversal vulnerabilities.
+Why URL decoding must be considered before validating filesystem paths.
+Concurrency
+Thread pool design using mutexes and condition variables.
+How worker threads consume tasks from a shared queue.
+How multiple client connections can be processed concurrently.
+The difference between connection-level concurrency and request-level processing.
+Software Architecture
+Separating TCP connection handling from HTTP parsing.
+Separating protocol parsing from application-level form parsing.
+Designing a dedicated HttpParser.
+Keeping URL decoding and form parsing as independent utilities.
+Breaking a growing systems project into single-responsibility components.
+Maintaining TCP buffering state independently for each client connection.
+Keeping routing and HTTP parsing separate.
+Roadmap
+HTTP
+ HTTP Request-Line parsing
+ HTTP header parsing
+ HTTP header value trimming
+ POST request body extraction
+ Form URL-encoded body parsing
+ Post/Redirect/Get (PRG) flow using 303 redirects
+ URL decoding
+ Query parameter parsing
+ MIME type detection
+ Static file serving
+ Persistent (Keep-Alive) connections
+ JSON request body parsing
+ Multipart form-data parsing
+ Cookie parsing
+ Directory listing
+ Chunked Transfer-Encoding
+ Range requests
+ Conditional requests (ETag, If-Modified-Since)
+ Proper handling of malformed HTTP requests
+ Improved HTTP status code handling
+ Full HTTP/1.1 compliance
+Performance
+ Connection timeout handling
+ Graceful server shutdown
+ Benchmarking with ApacheBench
+ Concurrent load testing
+ Profiling
+ Memory optimization
+ Static file caching
+ Response buffering optimization
+Systems
+ Refactor HTTP parsing into a dedicated HttpParser
+ Separate TCP connection management from HttpServer
+ Connection abstraction
+ Non-blocking sockets
+ Event-driven I/O (epoll)
+ Connection manager
+ Thread-safe response cache
+ Event-driven architecture
+ Zero-copy / efficient file transmission
+ Graceful worker-thread shutdown
+Testing
+ Unit tests
+ HTTP parser unit tests
+ Query parser tests
+ URL decoder tests
+ Integration tests
+ Static file security tests
+ Keep-Alive tests
+ Multiple-request connection tests
+ Malformed request tests
+ Stress testing
+ Automated regression tests
+Testing Performed
 
----
+The server has been manually tested with:
 
-## Roadmap
+Static Files
+/about.html
+/style.css
+/css/style.css
+/script.js
+Missing Files
+/does-not-exist.css
+/style.html
 
-### HTTP
+Correctly returns:
 
-* [x] HTTP Request-Line parsing
-* [x] HTTP header parsing
-* [x] POST request body extraction
-* [x] Form URL-encoded body parsing
-* [x] Post/Redirect/Get (PRG) flow using 303 redirects
-* [x] URL decoding
-* [x] Query parameter parsing
-* [ ] JSON request body parsing
-* [ ] Multipart form-data parsing
-* [ ] Cookie parsing
-* [x] MIME type detection
-* [x] Static file serving
-* [ ] Directory listing
-* [ ] Persistent (Keep-Alive) connections
-* [ ] Chunked Transfer-Encoding
-* [ ] Full HTTP/1.1 compliance
+404 Not Found
+Path Traversal
 
-### Performance
+Tested against:
 
-* [ ] Connection timeout handling
-* [ ] Graceful server shutdown
-* [ ] Benchmarking
-* [ ] Profiling
-* [ ] Memory optimization
+/../../etc/passwd
+/%2e%2e/%2e%2e/etc/passwd
 
-### Systems
+Requests are prevented from escaping the configured public/ directory.
 
-* [ ] Refactor HTTP parsing into a dedicated `HttpParser`
-* [ ] Event-driven I/O (`epoll`)
-* [ ] Non-blocking sockets
-* [ ] Connection manager
-* [ ] Thread-safe response cache
+URL Decoding
 
-### Testing
+Tested with encoded paths such as:
 
-* [ ] Unit tests
-* [ ] Integration tests
-* [ ] Stress testing
+/hello%20world
 
----
+which is decoded to:
 
-## Future Goals
+/hello world
+Query Parameters
+
+Tested with:
+
+/about?name=Saurabh
+
+including multiple parameters and URL-encoded values.
+
+POST Requests
+
+Tested with:
+
+Content-Type: application/x-www-form-urlencoded
+
+and verified:
+
+Content-Length based body extraction
+Form parsing
+Query-independent request body handling
+PRG redirect flow
+Persistent Connections
+
+Tested multiple HTTP requests over the same TCP connection:
+
+GET /about.html
+GET /css/style.css
+Connection: close
+
+The server correctly:
+
+Processes the first request.
+Keeps the TCP connection alive.
+Reads the second request from the same connection.
+Sends the second response.
+Closes the connection because of Connection: close.
+Project Structure
+
+The project is organized into focused components:
+
+http-server/
+│
+├── src/
+│   ├── HttpServer.cpp
+│   ├── HttpParser.cpp
+│   ├── HttpResponse.cpp
+│   ├── Router.cpp
+│   ├── FormParser.cpp
+│   ├── UrlDecoder.cpp
+│   ├── MimeTypes.cpp
+│   └── ThreadPool.cpp
+│
+├── include/
+│   ├── HttpServer.h
+│   ├── HttpParser.h
+│   ├── HttpRequest.h
+│   ├── HttpResponse.h
+│   ├── Router.h
+│   ├── FormParser.h
+│   ├── UrlDecoder.h
+│   ├── MimeTypes.h
+│   └── ThreadPool.h
+│
+├── public/
+│   ├── index.html
+│   ├── about.html
+│   ├── style.css
+│   ├── script.js
+│   └── css/
+│
+├── tests/
+├── build/
+├── CMakeLists.txt
+├── server.conf
+└── README.md
+Future Goals
 
 The long-term objective is to evolve this project into a lightweight production-style HTTP server by implementing more of the HTTP/1.1 specification, improving performance, and exploring lower-level systems concepts such as efficient I/O multiplexing, scalable connection handling, and robust request parsing.
 
-As the project evolves, I also plan to deepen my understanding of systems programming concepts such as event-driven architectures, non-blocking I/O, efficient memory management, and high-performance server design.
+The next major goals are:
+
+Improve HTTP parser robustness and validation.
+Add automated unit and integration tests.
+Separate TCP connection management from HttpServer.
+Introduce connection timeouts.
+Implement graceful server shutdown.
+Add non-blocking sockets.
+Introduce Linux epoll.
+Move toward an event-driven architecture.
+Benchmark the server under concurrent load.
+Profile CPU and memory usage.
+Optimize static file serving.
+Explore efficient file transmission and zero-copy techniques.
+Implement more of the HTTP/1.1 specification.
+
+The project is ultimately intended to demonstrate practical understanding of:
+
+TCP/IP networking
+Socket programming
+HTTP/1.1
+TCP stream reassembly
+HTTP request parsing
+HTTP response generation
+Persistent connections
+Concurrency
+Thread pools
+Filesystem operations
+Secure static file serving
+Non-blocking I/O
+Event-driven server architecture
+High-performance server design

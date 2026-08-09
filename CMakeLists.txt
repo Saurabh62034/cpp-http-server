@@ -19,4 +19,5 @@ add_executable(
     src/FormParser.cpp
     src/UrlDecoder.cpp
     src/MimeTypes.cpp
+    src/HttpParser.cpp
 )

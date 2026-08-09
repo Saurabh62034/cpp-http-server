@@ -1,5 +1,6 @@
 #include "HttpResponse.h"
 
+
 std::string HttpResponse::toString() const
 {
     std::string statusText;
