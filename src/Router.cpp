@@ -1,14 +1,17 @@
 #include "Router.h"
 #include "HandlePost.h"
+#include "MimeTypes.h"
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <filesystem>
 #include <unordered_map>
 
 
 std::string readFile(const std::string& path)
 {
-    std::ifstream file(path);
+    std::ifstream file(path, std::ios::binary);
 
     if(!file)
     {
@@ -19,6 +22,34 @@ std::string readFile(const std::string& path)
     buffer << file.rdbuf();
 
     return buffer.str();
+}
+
+std::string getStaticFilePath(const std::string& requestPath)
+{
+    namespace fs = std::filesystem;
+
+    fs::path publicRoot = fs::weakly_canonical("../public");
+
+    fs::path relativePath = requestPath.substr(1);
+
+    fs::path requestedPath =
+        fs::weakly_canonical(publicRoot / relativePath);
+
+    if(!fs::exists(requestedPath) ||
+       !fs::is_regular_file(requestedPath))
+    {
+        return "";
+    }
+
+    std::string root = publicRoot.string();
+    std::string file = requestedPath.string();
+
+    if(file.compare(0, root.size(), root) != 0)
+    {
+        return "";
+    }
+
+    return requestedPath.string();
 }
 
 HttpResponse Router::route(const HttpRequest& request)
@@ -86,8 +117,26 @@ HttpResponse Router::route(const HttpRequest& request)
    
     else
     {
-        response.statusCode = 404;
-        response.body = "Page Not Found";
+        // Static file serving
+        std::string filePath =
+            getStaticFilePath(request.path);
+
+        if(filePath.empty())
+        {
+            response.statusCode = 404;
+            response.statusMessage = "Not Found";
+            response.contentType = "text/plain";
+            response.body = "Page Not Found";
+        }
+        else
+        {
+            response.statusCode = 200;
+            response.contentType =
+                MimeTypes::get(filePath);
+
+            response.body =
+                readFile(filePath);
+        }
     }
 
     return response;
