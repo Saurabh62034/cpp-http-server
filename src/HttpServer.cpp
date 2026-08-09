@@ -1,9 +1,9 @@
 #include "HttpServer.h"
 #include "FormParser.h"
 #include "UrlDecoder.h"
+#include "MimeTypes.h"
 #include <iostream>
 #include <sstream>
-
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
@@ -14,40 +14,6 @@ HttpServer::HttpServer(int port, int threadCount)
     : port_(port),
       pool(threadCount)
 {
-}
-
-HttpRequest HttpServer::parseRequest(const string& buffer)
-{
-    HttpRequest request;
-
-    std::stringstream ss(buffer);
-    ss >> request.method;
-    ss >> request.path;
-    ss >> request.version;
-
-    size_t query_pos = request.path.find("?");
-    string query = "";
-    if(query_pos != string::npos){
-        query = request.path.substr(query_pos+1);
-        request.path = request.path.substr(0,query_pos);
-    }
-
-    request.path = UrlDecoder::decode(request.path);
-    request.query = query;
-    parseQueryParams(request);
-    return request;
-}
-
-std::string trim(const std::string& value)
-{
-    size_t start = value.find_first_not_of(" \t");
-    size_t end = value.find_last_not_of(" \t");
-
-    if (start == std::string::npos) {
-        return "";
-    }
-
-    return value.substr(start, end - start + 1);
 }
 
 void parseQueryParams(HttpRequest &request){
@@ -77,6 +43,49 @@ void parseQueryParams(HttpRequest &request){
         request.queryParams[key] = value;
     }
 }
+
+HttpRequest HttpServer::parseRequest(const string& buffer)
+{
+    HttpRequest request;
+
+    std::stringstream ss(buffer);
+    ss >> request.method;
+    ss >> request.path;
+    ss >> request.version;
+
+    size_t query_pos = request.path.find("?");
+    string query = "";
+    if(query_pos != string::npos){
+        query = request.path.substr(query_pos+1);
+        request.path = request.path.substr(0,query_pos);
+    }
+
+    request.path = UrlDecoder::decode(request.path);
+    request.query = query;
+    parseQueryParams(request);
+
+    cout << MimeTypes::get("index.html") << endl;
+cout << MimeTypes::get("style.css") << endl;
+cout << MimeTypes::get("script.js") << endl;
+cout << MimeTypes::get("image.png") << endl;
+cout << MimeTypes::get("photo.jpg") << endl;
+cout << MimeTypes::get("data.json") << endl;
+cout << MimeTypes::get("something.xyz") << endl;
+    return request;
+}
+
+std::string trim(const std::string& value)
+{
+    size_t start = value.find_first_not_of(" \t");
+    size_t end = value.find_last_not_of(" \t");
+
+    if (start == std::string::npos) {
+        return "";
+    }
+
+    return value.substr(start, end - start + 1);
+}
+
 
 string ReceiveMessage(int client_fd, string& buffer_leftover){
     char buffer[1024];
