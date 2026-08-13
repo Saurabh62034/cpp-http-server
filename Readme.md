@@ -330,59 +330,61 @@ Maintaining TCP buffering state independently for each client connection.
 Keeping routing and HTTP parsing separate.
 Roadmap
 HTTP
- HTTP Request-Line parsing
- HTTP header parsing
- HTTP header value trimming
- POST request body extraction
- Form URL-encoded body parsing
- Post/Redirect/Get (PRG) flow using 303 redirects
- URL decoding
- Query parameter parsing
- MIME type detection
- Static file serving
- Persistent (Keep-Alive) connections
- JSON request body parsing
- Multipart form-data parsing
- Cookie parsing
- Directory listing
- Chunked Transfer-Encoding
- Range requests
- Conditional requests (ETag, If-Modified-Since)
- Proper handling of malformed HTTP requests
- Improved HTTP status code handling
- Full HTTP/1.1 compliance
+- [x] HTTP Request-Line parsing
+- [x] HTTP header parsing
+- [x] HTTP header value trimming
+- [x] POST request body extraction
+- [x] Form URL-encoded body parsing
+- [x] Post/Redirect/Get (PRG) flow using 303 redirects
+- [x] URL decoding
+- [x] Query parameter parsing
+- [x] MIME type detection
+- [x] Static file serving
+- [x] Persistent (Keep-Alive) connections
+- [ ] JSON request body parsing
+- [ ] Multipart form-data parsing
+- [ ] Cookie parsing
+- [ ] Directory listing
+- [ ] Chunked Transfer-Encoding
+- [ ] Range requests
+- [ ] Conditional requests (ETag, If-Modified-Since)
+- [ ] Proper handling of malformed HTTP requests
+- [ ] Improved HTTP status code handling
+- [ ] Full HTTP/1.1 compliance
+
 Performance
- Connection timeout handling
- Graceful server shutdown
- Benchmarking with ApacheBench
- Concurrent load testing
- Profiling
- Memory optimization
- Static file caching
- Response buffering optimization
+- [ ] Connection timeout handling
+- [ ] Graceful server shutdown
+- [x] Benchmarking with ApacheBench
+- [x] Concurrent load testing
+- [ ] Profiling
+- [ ] Memory optimization
+- [ ] Static file caching
+- [ ] Response buffering optimization
 Systems
- Refactor HTTP parsing into a dedicated HttpParser
- Separate TCP connection management from HttpServer
- Connection abstraction
- Non-blocking sockets
- Event-driven I/O (epoll)
- Connection manager
- Thread-safe response cache
- Event-driven architecture
- Zero-copy / efficient file transmission
- Graceful worker-thread shutdown
+- [x] Refactor HTTP parsing into a dedicated `HttpParser`
+- [ ] Separate TCP connection management from `HttpServer`
+- [ ] Connection abstraction
+- [ ] Non-blocking sockets
+- [ ] Event-driven I/O (`epoll`)
+- [ ] Connection manager
+- [ ] Thread-safe response cache
+- [ ] Event-driven architecture
+- [ ] Zero-copy / efficient file transmission
+- [ ] Graceful worker-thread shutdown
 Testing
- Unit tests
- HTTP parser unit tests
- Query parser tests
- URL decoder tests
- Integration tests
- Static file security tests
- Keep-Alive tests
- Multiple-request connection tests
- Malformed request tests
- Stress testing
- Automated regression tests
+- [ ] Unit tests
+- [ ] HTTP parser unit tests
+- [ ] Query parser tests
+- [ ] URL decoder tests
+- [ ] Integration tests
+- [x] Static file security tests
+- [x] Keep-Alive tests
+- [x] Multiple-request connection tests
+- [ ] Malformed request tests
+- [ ] Stress testing
+- [ ] Automated regression tests
+
 Testing Performed
 
 The server has been manually tested with:

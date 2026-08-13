@@ -8,3 +8,8 @@ password: 12345678
 email: Saurabh%40mail.com
 name: Saurabh+singh
 }
+{
+password: 12345678
+email: saurabh@example.com
+name: Saurabh
+}

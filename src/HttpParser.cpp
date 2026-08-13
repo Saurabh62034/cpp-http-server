@@ -5,7 +5,7 @@
 #include <cctype>
 #include <sys/socket.h>
 #include <iostream>
-
+using namespace std;
 HttpRequest HttpParser::parse(int client_fd,
     const std::string& data,
     std::string& bufferLeftover)
@@ -117,6 +117,8 @@ void HttpParser::parseHeaders(
             trim(message.substr(colon + 1));
 
         request.headers[key] = value;
+
+        
     }
 }
 
@@ -170,6 +172,10 @@ void HttpParser::parseQueryParams(
             UrlDecoder::decodeQueryComponent(value);
 
         request.queryParams[key] = value;
+    }
+
+    for(auto &p:request.queryParams){
+        cout<<p.first<<":"<<p.second<<endl;
     }
 }
 
