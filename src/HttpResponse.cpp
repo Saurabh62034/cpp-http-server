@@ -9,6 +9,7 @@ std::string HttpResponse::toString() const
     {
         case 200: statusText = "OK"; break;
         case 303: statusText = "See Other"; break; // Required for redirects
+        case 400: statusText = "Bad Request"; break;
         case 404: statusText = "Not Found"; break;
         case 500: statusText = "Internal Server Error"; break;
         default:  statusText = "Unknown";

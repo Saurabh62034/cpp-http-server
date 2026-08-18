@@ -102,13 +102,25 @@ void HttpServer::handleClient(int client_fd)
             cout << "===== RAW HEADERS =====" << endl;
             cout << headers_data << endl;
             cout << "=======================" << endl;
-            HttpRequest request =
+            ParseResult result =
                 parser.parse(
                     client_fd,
                     headers_data,
                     buffer_leftover
                 );
-
+            if (result.status != ParseStatus::SUCCESS)
+            {
+                HttpResponse response;
+                if (result.status == ParseStatus::BAD_REQUEST)
+                {
+                    response.statusCode = 400;
+                }
+                response.headers["Connection"] = "close";
+                std::string responseText = response.toString();
+                sendAll(client_fd, responseText);
+                break;
+            }
+            HttpRequest request = result.request;
             FormParser formparser;
             if(request.headers["Content-Type"] == "application/x-www-form-urlencoded"){
                 request.form = formparser.parse(request.body);
@@ -137,6 +149,7 @@ void HttpServer::handleClient(int client_fd)
                     keep_alive = true;
                 }
             }
+
             Router router;
             HttpResponse response = router.route(request);
 
