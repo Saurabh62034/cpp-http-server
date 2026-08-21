@@ -110,6 +110,7 @@ void HttpServer::handleClient(int client_fd)
                 );
             if (result.status != ParseStatus::SUCCESS)
             {
+                cout<<"Parsing failed"<<endl;
                 HttpResponse response;
                 if (result.status == ParseStatus::BAD_REQUEST)
                 {

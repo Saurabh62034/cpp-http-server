@@ -4,6 +4,20 @@
 
 #include <string>
 
+enum class ParseStatus
+{
+    SUCCESS,
+    BAD_REQUEST,
+    METHOD_NOT_ALLOWED,
+    HTTP_VERSION_NOT_SUPPORTED
+};
+
+struct ParseResult
+{
+    ParseStatus status;
+    HttpRequest request;
+};
+
 class HttpParser
 {
 public:
@@ -35,16 +49,3 @@ private:
 };
 
 
-enum class ParseStatus
-{
-    SUCCESS,
-    BAD_REQUEST,
-    METHOD_NOT_ALLOWED,
-    HTTP_VERSION_NOT_SUPPORTED
-};
-
-struct ParseResult
-{
-    ParseStatus status;
-    HttpRequest request;
-};

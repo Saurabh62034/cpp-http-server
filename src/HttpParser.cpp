@@ -38,26 +38,36 @@ bool HttpParser::parseRequestLine(
     // 1. Request line cannot be empty
     if(data.empty())
     {
+        cout<<"Parsing failed, data.empty()"<<endl;
+
         return false;
     }
 
-    std::stringstream ss(data);
+    size_t requestlineSize = data.find("\r\n");
+    if(requestlineSize == std::string::npos) return false;
+
+    string requestLine = data.substr(0,requestlineSize);
+
+    std::stringstream ss(requestLine);
 
     // 2. Method must exist
     if(!(ss >> request.method))
     {
+        cout<<"Parsing failed, ss >> request.method"<<endl;
         return false;
     }
 
     // 3. Request target/path must exist
     if(!(ss >> request.path))
     {
+        cout<<"Parsing failed, request.path"<<endl;
         return false;
     }
 
     // 4. HTTP version must exist
     if(!(ss >> request.version))
     {
+        cout<<"Parsing failed, request.version"<<endl;
         return false;
     }
 
@@ -66,6 +76,7 @@ bool HttpParser::parseRequestLine(
 
     if(ss >> extra)
     {
+        cout<<"Parsing failed, extra"<<endl;
         return false;
     }
 
@@ -73,6 +84,7 @@ bool HttpParser::parseRequestLine(
     if(request.version != "HTTP/1.1" &&
        request.version != "HTTP/1.0")
     {
+        cout<<"Parsing failed, != HTTP/1.0"<<endl;
         return false;
     }
 
@@ -80,12 +92,14 @@ bool HttpParser::parseRequestLine(
     if(request.method != "GET" &&
        request.method != "POST")
     {
+        cout<<"Parsing failed, request.method != POST"<<endl;
         return false;
     }
 
     // 8. Request target cannot be empty
     if(request.path.empty())
     {
+        cout<<"Parsing failed, path.empty()"<<endl;
         return false;
     }
 
@@ -104,6 +118,7 @@ bool HttpParser::parseRequestLine(
     // 10. Path cannot become empty
     if(request.path.empty())
     {
+        cout<<"Parsing failed, path.empty()"<<endl;
         return false;
     }
 
