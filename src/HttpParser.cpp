@@ -21,7 +21,10 @@ ParseResult HttpParser::parse(
         };
     }
 
-    parseHeaders(data, request);
+    if(!parseHeaders(data, request)){
+        return {ParseStatus::BAD_REQUEST, request};
+    }
+    
     parseQueryParams(request);
     parseBody(client_fd, request, bufferLeftover);
 
@@ -148,7 +151,7 @@ static std::string trim(const std::string& value)
     );
 }
 
-void HttpParser::parseHeaders(
+bool HttpParser::parseHeaders(
     const std::string& data,
     HttpRequest& request)
 {
@@ -158,7 +161,7 @@ void HttpParser::parseHeaders(
 
     if(firstLine == std::string::npos)
     {
-        return;
+        return true;
     }
 
     leftBuffer =
@@ -190,19 +193,21 @@ void HttpParser::parseHeaders(
         // Invalid header
         if(colon == std::string::npos)
         {
-            continue;
+            return false;
         }
 
         std::string key =
             trim(message.substr(0, colon));
-
+        if(key.empty())
+        {
+            return false;
+        }
         std::string value =
             trim(message.substr(colon + 1));
 
         request.headers[key] = value;
-
-        
     }
+    return true;
 }
 
 void HttpParser::parseQueryParams(
@@ -268,14 +273,11 @@ void HttpParser::parseBody(
     std::string& bufferLeftover)
 {
     auto it = request.headers.find("Content-Length");
-
     if(it == request.headers.end())
     {
         return;
     }
-
     size_t length = 0;
-
     try
     {
         length = std::stoul(it->second);
@@ -284,14 +286,11 @@ void HttpParser::parseBody(
     {
         return;
     }
-
     char buffer[1024];
-
     while(bufferLeftover.size() < length)
     {
         ssize_t bytes =
             recv(client_fd, buffer, sizeof(buffer), 0);
-
         if(bytes > 0)
         {
             bufferLeftover.append(buffer, bytes);
@@ -301,7 +300,6 @@ void HttpParser::parseBody(
             std::cout
                 << "Client disconnected while receiving body."
                 << std::endl;
-
             return;
         }
         else
@@ -309,7 +307,6 @@ void HttpParser::parseBody(
             std::cout
                 << "Error while receiving body."
                 << std::endl;
-
             return;
         }
     }

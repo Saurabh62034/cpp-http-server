@@ -31,7 +31,7 @@ private:
         HttpRequest& request
     );
 
-    void parseHeaders(
+    bool parseHeaders(
         const std::string& data,
         HttpRequest& request
     );
