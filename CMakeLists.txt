@@ -16,4 +16,8 @@ add_executable(
     src/ThreadPool.cpp
     src/Logger.cpp
     src/Config.cpp
+    src/FormParser.cpp
+    src/UrlDecoder.cpp
+    src/MimeTypes.cpp
+    src/HttpParser.cpp
 )

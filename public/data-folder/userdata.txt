@@ -1,0 +1,35 @@
+{
+password: 12345678
+email: Saurabh%40mail.com
+name: saurabh+singh
+}
+{
+password: 12345678
+email: Saurabh%40mail.com
+name: Saurabh+singh
+}
+{
+password: 12345678
+email: saurabh@example.com
+name: Saurabh
+}
+{
+password: 12345678
+email: Saurabh%40mail.com
+name: saurabh
+}
+{
+password: 12345678
+email: Saurabh%40mail.com
+name: saurabh
+}
+{
+password: 12345678
+email: Saurabh%40mail.com
+name: saurabh
+}
+{
+password: 12345678
+email: Saurabh%40mail.com
+name: saurabh+singh+rajput
+}

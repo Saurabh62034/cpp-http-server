@@ -1,6 +1,35 @@
 <!DOCTYPE html>
 <html>
+<head>
+    <title>C++ Server Test</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { text-align: center; font-family: sans-serif; margin-top: 50px; }
+        button { padding: 15px 30px; font-size: 18px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 5px; }
+    </style>
+</head>
 <body>
-<h1>Welcome To My C++ HTTP Server</h1>
+
+    <h1>Welcome To My C++ HTTP Server</h1>
+    <p>Tap the button below to test hardware interaction:</p>
+    
+    <!-- The user interaction trigger -->
+    <button id="vibrateBtn">Create Account</button>
+
+    <script>
+        document.getElementById('vibrateBtn').addEventListener('click', function() {
+            // 1. Trigger vibration immediately for instant physical feedback
+            if (navigator.vibrate) {
+                navigator.vibrate(1000); 
+                console.log("Vibration triggered successfully!");
+            } else {
+                console.log("Vibration API is not supported on this device.");
+            }
+
+            window.location.href = '/create-user'; 
+
+        });
+    </script>
+
 </body>
 </html>

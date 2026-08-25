@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Registration Form</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        body {
+            background-color: #f4f7f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .form-container {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        h2 {
+            margin-bottom: 20px;
+            color: #333333;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666666;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #cccccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        input:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #007bff;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background-color 0.2s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="form-container">
+        <h2>Create Account</h2>
+        <form action="/saveData" method="POST">
+            
+            <!-- Name Input -->
+            <div class="form-group">
+                <label for="username">Full Name</label>
+                <input type="text" id="username" name="name" required placeholder="John Doe">
+            </div>
+
+            <!-- Email Input -->
+            <div class="form-group">
+                <label for="useremail">Email Address</label>
+                <input type="email" id="useremail" name="email" required placeholder="you@example.com">
+            </div>
+
+            <!-- Password Input -->
+            <div class="form-group">
+                <label for="userpassword">Password</label>
+                <input type="password" id="userpassword" name="password" required minlength="8" placeholder="At least 8 characters">
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit">Sign Up</button>
+            
+        </form>
+    </div>
+
+</body>
+</html>

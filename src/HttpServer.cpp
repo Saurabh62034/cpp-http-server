@@ -1,12 +1,15 @@
 #include "HttpServer.h"
-
+#include "FormParser.h"
+#include "UrlDecoder.h"
+#include "MimeTypes.h"
 #include <iostream>
 #include <sstream>
-
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
 #include <thread>
+#include <cctype>
+using namespace std;
 
 HttpServer::HttpServer(int port, int threadCount)
     : port_(port),
@@ -14,49 +17,166 @@ HttpServer::HttpServer(int port, int threadCount)
 {
 }
 
-HttpRequest HttpServer::parseRequest(const char* buffer)
+bool equalsIgnoreCase(const std::string& a,
+                      const std::string& b)
 {
-    HttpRequest request;
+    if(a.size() != b.size())
+    {
+        return false;
+    }
 
-    std::stringstream ss(buffer);
+    for(size_t i = 0; i < a.size(); ++i)
+    {
+        if(std::tolower(
+               static_cast<unsigned char>(a[i])) !=
+           std::tolower(
+               static_cast<unsigned char>(b[i])))
+        {
+            return false;
+        }
+    }
 
-    ss >> request.method;
-    ss >> request.path;
-    ss >> request.version;
+    return true;
+}
 
-    return request;
+bool sendAll(int client_fd, const std::string& response)
+{
+    size_t total_sent = 0;
+
+    while(total_sent < response.size())
+    {
+        ssize_t bytes_sent = send(
+            client_fd,
+            response.data() + total_sent,
+            response.size() - total_sent,
+            0
+        );
+
+        if(bytes_sent <= 0)
+        {
+            return false;
+        }
+
+        total_sent += bytes_sent;
+    }
+
+    return true;
+}
+
+string ReceiveMessage(int client_fd, string& buffer_leftover){
+    char buffer[1024];
+
+    while(true){
+        size_t leftover_pos = buffer_leftover.find("\r\n\r\n");
+        if(leftover_pos != string::npos){
+            string header_message = buffer_leftover.substr(0,leftover_pos);
+            buffer_leftover = buffer_leftover.substr(leftover_pos+4);
+            return header_message;
+        }
+
+        memset(buffer, 0, sizeof(buffer));
+        ssize_t bytes = recv(client_fd, buffer, sizeof(buffer)-1, 0);
+        if(bytes>0){
+            buffer_leftover.append(buffer, bytes);
+        }
+        if(bytes == 0){
+            cout<<"gracefully client disconnects."<<endl;
+            return "";
+        }
+        if(bytes<1){
+            cout<<"hardware or network error occurred."<<endl;
+            return "";
+        }
+    }
 }
 
 void HttpServer::handleClient(int client_fd)
 {
-    std::cout << "handleClient start\n";
+    string buffer_leftover = "";
+    int body_length = 0;
 
-        char buffer[4096];
+        while(true){
+            string headers_data = ReceiveMessage(client_fd, buffer_leftover);
 
-        ssize_t bytes = recv(client_fd, buffer, sizeof(buffer)-1, 0);
-        std::cout<<"new client request: fd= "<< client_fd<< ", bytes = "<< bytes<< '\n';
-        if(bytes > 0){
-            buffer[bytes] = '\0';
-            std::cout << "Request received\n";
-            HttpRequest request = parseRequest(buffer);
+            if(headers_data.empty()) break;
+            cout << "===== RAW HEADERS =====" << endl;
+            cout << headers_data << endl;
+            cout << "=======================" << endl;
+            ParseResult result =
+                parser.parse(
+                    client_fd,
+                    headers_data,
+                    buffer_leftover
+                );
+            if (result.status != ParseStatus::SUCCESS)
+            {
+                cout<<"Parsing failed"<<endl;
+                HttpResponse response;
+                if (result.status == ParseStatus::BAD_REQUEST)
+                {
+                    response.statusCode = 400;
+                }
+                response.headers["Connection"] = "close";
+                std::string responseText = response.toString();
+                sendAll(client_fd, responseText);
+                break;
+            }
+            HttpRequest request = result.request;
+            FormParser formparser;
+            if(request.headers["Content-Type"] == "application/x-www-form-urlencoded"){
+                request.form = formparser.parse(request.body);
+            }
+
+            bool keep_alive = false;
+            if(request.version == "HTTP/1.1")
+            {
+                keep_alive = true;
+
+                auto it = request.headers.find("Connection");
+
+                if(it != request.headers.end() &&
+                equalsIgnoreCase(it->second, "close"))
+                {
+                    keep_alive = false;
+                }
+            }
+            else if(request.version == "HTTP/1.0")
+            {
+                auto it = request.headers.find("Connection");
+
+                if(it != request.headers.end() &&
+                equalsIgnoreCase(it->second, "keep-alive"))
+                {
+                    keep_alive = true;
+                }
+            }
 
             Router router;
             HttpResponse response = router.route(request);
 
+            if(keep_alive)
+            {
+                response.headers["Connection"] = "keep-alive";
+            }
+            else
+            {
+                response.headers["Connection"] = "close";
+            }
+
             std::string responseText = response.toString();
-
-            std::cout<< "Response size = "<< responseText.size()<< '\n';
-            send(client_fd,
-                responseText.c_str(),
-                responseText.size(),
-            0);
+            if(!sendAll(client_fd, responseText))
+            {
+                std::cerr << "Failed to send response\n";
+                break;
+            }
+            if (!keep_alive) {
+                break;
+            }
         }
-
     close(client_fd);
 }
 
-void HttpServer::start()
-{
+void HttpServer::start(){
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
 
     if(server_fd < 0)
