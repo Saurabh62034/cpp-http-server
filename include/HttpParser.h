@@ -40,7 +40,7 @@ private:
         HttpRequest& request
     );
 
-    void parseBody(
+    bool parseBody(
         int client_fd,
         HttpRequest& request,
         std::string& bufferLeftover

@@ -26,7 +26,11 @@ ParseResult HttpParser::parse(
     }
     
     parseQueryParams(request);
-    parseBody(client_fd, request, bufferLeftover);
+
+    if(!parseBody(client_fd, request, bufferLeftover)){
+        return {ParseStatus::BAD_REQUEST, request};
+    }
+    
 
     return {
         ParseStatus::SUCCESS,
@@ -151,6 +155,39 @@ static std::string trim(const std::string& value)
     );
 }
 
+
+bool isValidHeaderName(const std::string& name)
+{
+    if(name.empty())
+    {
+        return false;
+    }
+
+    for(unsigned char c : name)
+    {
+        if(!std::isalnum(c) &&
+           c != '!' &&
+           c != '#' &&
+           c != '$' &&
+           c != '%' &&
+           c != '&' &&
+           c != '\'' &&
+           c != '*' &&
+           c != '+' &&
+           c != '-' &&
+           c != '.' &&
+           c != '^' &&
+           c != '_' &&
+           c != '`' &&
+           c != '|' &&
+           c != '~')
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
 bool HttpParser::parseHeaders(
     const std::string& data,
     HttpRequest& request)
@@ -198,7 +235,7 @@ bool HttpParser::parseHeaders(
 
         std::string key =
             trim(message.substr(0, colon));
-        if(key.empty())
+        if(!isValidHeaderName(key))
         {
             return false;
         }
@@ -267,7 +304,7 @@ void HttpParser::parseQueryParams(
     }
 }
 
-void HttpParser::parseBody(
+bool HttpParser::parseBody(
     int client_fd,
     HttpRequest& request,
     std::string& bufferLeftover)
@@ -275,17 +312,30 @@ void HttpParser::parseBody(
     auto it = request.headers.find("Content-Length");
     if(it == request.headers.end())
     {
-        return;
+        return true;
+    }
+    for(unsigned char c : it->second)
+    {
+        if(!std::isdigit(c))
+        {
+            return false;
+        }
     }
     size_t length = 0;
+    size_t parsedPosition = 0;
     try
     {
-        length = std::stoul(it->second);
+        length = std::stoul(it->second, &parsedPosition);
     }
     catch(const std::exception&)
     {
-        return;
+        return false;
     }
+    if(parsedPosition != it->second.size())
+    {
+        return false;
+    }
+
     char buffer[1024];
     while(bufferLeftover.size() < length)
     {
@@ -300,14 +350,14 @@ void HttpParser::parseBody(
             std::cout
                 << "Client disconnected while receiving body."
                 << std::endl;
-            return;
+            return false;
         }
         else
         {
             std::cout
                 << "Error while receiving body."
                 << std::endl;
-            return;
+            return false;
         }
     }
 
@@ -316,4 +366,6 @@ void HttpParser::parseBody(
 
     bufferLeftover =
         bufferLeftover.substr(length);
+
+    return true;
 }
