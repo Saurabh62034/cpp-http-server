@@ -13,12 +13,9 @@ ParseResult HttpParser::parse(
 {
     HttpRequest request;
 
-    if (!parseRequestLine(data, request))
-    {
-        return {
-            ParseStatus::BAD_REQUEST,
-            request
-        };
+    ParseStatus status = parseRequestLine(data, request);
+    if (status != ParseStatus::SUCCESS) {
+        return { status, request };
     }
 
     if(!parseHeaders(data, request)){
@@ -27,10 +24,10 @@ ParseResult HttpParser::parse(
     
     parseQueryParams(request);
 
-    if(!parseBody(client_fd, request, bufferLeftover)){
-        return {ParseStatus::BAD_REQUEST, request};
+    ParseStatus bodyStatus = parseBody(client_fd, request, bufferLeftover);
+    if(bodyStatus != ParseStatus::SUCCESS){
+        return {bodyStatus, request};
     }
-    
 
     return {
         ParseStatus::SUCCESS,
@@ -38,44 +35,49 @@ ParseResult HttpParser::parse(
     };
 }
 
-bool HttpParser::parseRequestLine(
+ParseStatus HttpParser::parseRequestLine(
     const std::string& data,
     HttpRequest& request)
 {
     // 1. Request line cannot be empty
     if(data.empty())
     {
-        cout<<"Parsing failed, data.empty()"<<endl;
-
-        return false;
+        cout << "Parsing failed, data.empty()" << endl;
+        return ParseStatus::BAD_REQUEST;
     }
 
     size_t requestlineSize = data.find("\r\n");
-    if(requestlineSize == std::string::npos) return false;
 
-    string requestLine = data.substr(0,requestlineSize);
+    if(requestlineSize == std::string::npos)
+    {
+        cout << "Parsing failed, no CRLF" << endl;
+        return ParseStatus::BAD_REQUEST;
+    }
+
+    string requestLine =
+        data.substr(0, requestlineSize);
 
     std::stringstream ss(requestLine);
 
     // 2. Method must exist
     if(!(ss >> request.method))
     {
-        cout<<"Parsing failed, ss >> request.method"<<endl;
-        return false;
+        cout << "Parsing failed, ss >> request.method" << endl;
+        return ParseStatus::BAD_REQUEST;
     }
 
     // 3. Request target/path must exist
     if(!(ss >> request.path))
     {
-        cout<<"Parsing failed, request.path"<<endl;
-        return false;
+        cout << "Parsing failed, request.path" << endl;
+        return ParseStatus::BAD_REQUEST;
     }
 
     // 4. HTTP version must exist
     if(!(ss >> request.version))
     {
-        cout<<"Parsing failed, request.version"<<endl;
-        return false;
+        cout << "Parsing failed, request.version" << endl;
+        return ParseStatus::BAD_REQUEST;
     }
 
     // 5. There must not be anything after HTTP version
@@ -83,31 +85,31 @@ bool HttpParser::parseRequestLine(
 
     if(ss >> extra)
     {
-        cout<<"Parsing failed, extra"<<endl;
-        return false;
+        cout << "Parsing failed, extra" << endl;
+        return ParseStatus::BAD_REQUEST;
     }
 
     // 6. Validate HTTP version
     if(request.version != "HTTP/1.1" &&
        request.version != "HTTP/1.0")
     {
-        cout<<"Parsing failed, != HTTP/1.0"<<endl;
-        return false;
+        cout << "HTTP version not supported" << endl;
+        return ParseStatus::HTTP_VERSION_NOT_SUPPORTED;
     }
 
     // 7. Validate method
     if(request.method != "GET" &&
        request.method != "POST")
     {
-        cout<<"Parsing failed, request.method != POST"<<endl;
-        return false;
+        cout << "Method not allowed" << endl;
+        return ParseStatus::METHOD_NOT_ALLOWED;
     }
 
     // 8. Request target cannot be empty
     if(request.path.empty())
     {
-        cout<<"Parsing failed, path.empty()"<<endl;
-        return false;
+        cout << "Parsing failed, path.empty()" << endl;
+        return ParseStatus::BAD_REQUEST;
     }
 
     // 9. Extract query parameters
@@ -125,17 +127,16 @@ bool HttpParser::parseRequestLine(
     // 10. Path cannot become empty
     if(request.path.empty())
     {
-        cout<<"Parsing failed, path.empty()"<<endl;
-        return false;
+        cout << "Parsing failed, path.empty()" << endl;
+        return ParseStatus::BAD_REQUEST;
     }
 
     // 11. URL decode
     request.path =
         UrlDecoder::decode(request.path);
 
-    return true;
+    return ParseStatus::SUCCESS;
 }
-
 static std::string trim(const std::string& value)
 {
     size_t start =
@@ -241,6 +242,10 @@ bool HttpParser::parseHeaders(
         }
         std::string value =
             trim(message.substr(colon + 1));
+        if(key == "Content-Length" && request.headers.find("Content-Length") != request.headers.end())
+        {
+            return false;
+        }
 
         request.headers[key] = value;
     }
@@ -251,7 +256,6 @@ void HttpParser::parseQueryParams(
     HttpRequest& request)
 {
     std::string query = request.query;
-
     while(!query.empty())
     {
         size_t ampPos = query.find("&");
@@ -304,7 +308,7 @@ void HttpParser::parseQueryParams(
     }
 }
 
-bool HttpParser::parseBody(
+ParseStatus HttpParser::parseBody(
     int client_fd,
     HttpRequest& request,
     std::string& bufferLeftover)
@@ -312,13 +316,17 @@ bool HttpParser::parseBody(
     auto it = request.headers.find("Content-Length");
     if(it == request.headers.end())
     {
-        return true;
+        if(request.method == "POST")
+        {
+            return ParseStatus::LENGTH_REQUIRED;
+        }
+        return ParseStatus::SUCCESS;
     }
     for(unsigned char c : it->second)
     {
         if(!std::isdigit(c))
         {
-            return false;
+            return ParseStatus::BAD_REQUEST;
         }
     }
     size_t length = 0;
@@ -329,11 +337,14 @@ bool HttpParser::parseBody(
     }
     catch(const std::exception&)
     {
-        return false;
+        return ParseStatus::BAD_REQUEST;
+    }
+    if(length>MAX_BODY_SIZE){
+        return ParseStatus::PAYLOAD_TOO_LARGE;
     }
     if(parsedPosition != it->second.size())
     {
-        return false;
+        return ParseStatus::BAD_REQUEST;
     }
 
     char buffer[1024];
@@ -350,14 +361,14 @@ bool HttpParser::parseBody(
             std::cout
                 << "Client disconnected while receiving body."
                 << std::endl;
-            return false;
+            return ParseStatus::BAD_REQUEST;
         }
         else
         {
             std::cout
                 << "Error while receiving body."
                 << std::endl;
-            return false;
+            return ParseStatus::BAD_REQUEST;
         }
     }
 
@@ -367,5 +378,5 @@ bool HttpParser::parseBody(
     bufferLeftover =
         bufferLeftover.substr(length);
 
-    return true;
+    return ParseStatus::SUCCESS;
 }

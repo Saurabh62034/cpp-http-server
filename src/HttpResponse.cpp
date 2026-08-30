@@ -11,7 +11,11 @@ std::string HttpResponse::toString() const
         case 303: statusText = "See Other"; break; // Required for redirects
         case 400: statusText = "Bad Request"; break;
         case 404: statusText = "Not Found"; break;
+        case 405: statusText = "Method Not Allowed"; break;
+        case 411: statusText = "Length Required"; break;
+        case 413: statusText = "Content Too Large"; break;
         case 500: statusText = "Internal Server Error"; break;
+        case 505: statusText = "HTTP Version not supported"; break;
         default:  statusText = "Unknown";
     }
 
