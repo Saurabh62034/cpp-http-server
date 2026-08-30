@@ -116,6 +116,19 @@ void HttpServer::handleClient(int client_fd)
                 {
                     response.statusCode = 400;
                 }
+                else if(result.status == ParseStatus::METHOD_NOT_ALLOWED){
+                    response.statusCode = 405;
+                }
+                else if(result.status == ParseStatus::HTTP_VERSION_NOT_SUPPORTED){
+                    response.statusCode = 505;
+                }
+                else if(result.status == ParseStatus::PAYLOAD_TOO_LARGE){
+                    response.statusCode = 413;
+                }
+                else if(result.status == ParseStatus::LENGTH_REQUIRED){
+                    response.statusCode = 411;
+                }
+                
                 response.headers["Connection"] = "close";
                 std::string responseText = response.toString();
                 sendAll(client_fd, responseText);
