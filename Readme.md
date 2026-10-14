@@ -348,8 +348,8 @@ HTTP
 - [ ] Chunked Transfer-Encoding
 - [ ] Range requests
 - [ ] Conditional requests (ETag, If-Modified-Since)
-- [ ] Proper handling of malformed HTTP requests
-- [ ] Improved HTTP status code handling
+- [x] Proper handling of malformed HTTP requests
+- [x] Improved HTTP status code handling
 - [ ] Full HTTP/1.1 compliance
 
 Performance

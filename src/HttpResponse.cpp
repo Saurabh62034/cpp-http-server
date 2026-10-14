@@ -27,8 +27,6 @@ std::string HttpResponse::toString() const
     for (const auto& header : headers) {
         responseString += header.first + ": " + header.second + "\r\n";
     }
-
     responseString += "\r\n" + body;
-
     return responseString;
 }
