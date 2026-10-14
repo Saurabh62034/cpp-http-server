@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <thread>
 #include <cctype>
+#include <fcntl.h>
 using namespace std;
 
 HttpServer::HttpServer(int port, int threadCount)
@@ -73,15 +74,23 @@ string ReceiveMessage(int client_fd, string& buffer_leftover){
             buffer_leftover = buffer_leftover.substr(leftover_pos+4);
             return header_message;
         }
-
         memset(buffer, 0, sizeof(buffer));
         ssize_t bytes = recv(client_fd, buffer, sizeof(buffer)-1, 0);
         if(bytes>0){
             buffer_leftover.append(buffer, bytes);
         }
-        if(bytes == 0){
+        else if(bytes == 0){
             cout<<"gracefully client disconnects."<<endl;
             return "";
+        }
+        else if(errno == EINTR){
+            cout<<"Error: Interrupted System Call. ";
+            return "";
+        }
+        else if(errno == EAGAIN || errno == EWOULDBLOCK){
+            //"E" stands for Error, and "AGAIN"
+            //Error: Operation Would Block
+            cout<<"No data is available right now."<<endl;
         }
         if(bytes<1){
             cout<<"hardware or network error occurred."<<endl;
@@ -232,12 +241,15 @@ void HttpServer::start(){
             accept(server_fd,
                    reinterpret_cast<sockaddr*>(&clientAddr),
                    &clientLen);
+        
 
         if(client_fd < 0)
         {
             continue;
         }
-
+        int flags = fcntl(client_fd, F_GETFL, 0);
+        int new_flags = flags | O_NONBLOCK;
+        fcntl(client_fd, F_SETFL, new_flags);
         pool.enqueue(
             [this, client_fd]()
             {
