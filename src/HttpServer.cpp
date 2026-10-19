@@ -19,7 +19,7 @@ HttpServer::HttpServer(int port, int threadCount)
       pool(threadCount)
 {
 }
-
+namespace{
 bool equalsIgnoreCase(const std::string& a,
                       const std::string& b)
 {
@@ -40,6 +40,43 @@ bool equalsIgnoreCase(const std::string& a,
     }
 
     return true;
+}
+
+bool hasHeaderToken(const std::string& value,
+                    const std::string& expected)
+{
+    std::size_t start = 0;
+
+    while (start < value.size())
+    {
+        const std::size_t comma = value.find(',', start);
+        const std::size_t end =
+            (comma == std::string::npos) ? value.size() : comma;
+
+        std::size_t first = value.find_first_not_of(" \t", start);
+
+        if (first != std::string::npos && first < end)
+        {
+            std::size_t last = value.find_last_not_of(" \t", end - 1);
+
+            const std::string token =
+                value.substr(first, last - first + 1);
+
+            if (equalsIgnoreCase(token, expected))
+            {
+                return true;
+            }
+        }
+
+        if (comma == std::string::npos)
+        {
+            break;
+        }
+
+        start = comma + 1;
+    }
+
+    return false;
 }
 
 bool sendAll(int client_fd, const std::string& response)
@@ -64,6 +101,8 @@ bool sendAll(int client_fd, const std::string& response)
     }
 
     return true;
+}
+
 }
 void HttpServer::handleClient(int client_fd)
 {
@@ -193,12 +232,10 @@ void HttpServer::handleClient(int client_fd)
         // Preserve existing form-parsing behavior.
         FormParser formparser;
 
-        auto contentTypeIt =
-            request.headers.find("Content-Type");
+        const auto contentTypeIt = request.headers.find("content-type");
 
         if (contentTypeIt != request.headers.end() &&
-            contentTypeIt->second ==
-                "application/x-www-form-urlencoded")
+            equalsIgnoreCase(contentTypeIt->second, "application/x-www-form-urlencoded"))
         {
             request.form = formparser.parse(request.body);
         }
@@ -207,27 +244,28 @@ void HttpServer::handleClient(int client_fd)
         // keep-alive policy for this refactoring step.
         bool keep_alive = false;
 
+        const auto connectionIt = request.headers.find("connection");
+        const bool hasConnectionHeader =
+            connectionIt != request.headers.end();
+
+        const bool hasClose =
+            hasConnectionHeader &&
+            hasHeaderToken(connectionIt->second, "close");
+
+        const bool hasKeepAlive =
+            hasConnectionHeader &&
+            hasHeaderToken(connectionIt->second, "keep-alive");
+
         if (request.version == "HTTP/1.1")
         {
-            keep_alive = true;
-
-            auto it = request.headers.find("Connection");
-
-            if (it != request.headers.end() &&
-                equalsIgnoreCase(it->second, "close"))
-            {
-                keep_alive = false;
-            }
+            // Persistent connections are the default in HTTP/1.1.
+            keep_alive = !hasClose;
         }
         else if (request.version == "HTTP/1.0")
         {
-            auto it = request.headers.find("Connection");
-
-            if (it != request.headers.end() &&
-                equalsIgnoreCase(it->second, "keep-alive"))
-            {
-                keep_alive = true;
-            }
+            // HTTP/1.0 requires an explicit keep-alive token.
+            // "close" takes precedence if both tokens are present.
+            keep_alive = hasKeepAlive && !hasClose;
         }
 
         // Existing application boundary remains unchanged.

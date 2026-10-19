@@ -1,14 +1,29 @@
 #include "HttpParser.h"
 #include "UrlDecoder.h"
-
-#include <cctype>
 #include <iostream>
 #include <limits>
 #include <sstream>
 #include <string>
+#include <algorithm>
+#include <cctype>
 
 namespace
 {
+    std::string toLowerAscii(std::string value)
+    {
+        std::transform(
+            value.begin(),
+            value.end(),
+            value.begin(),
+            [](unsigned char ch)
+            {
+                return static_cast<char>(std::tolower(ch));
+            }
+        );
+
+        return value;
+    }
+
     std::string trim(const std::string& value)
     {
         const std::size_t start =
@@ -279,7 +294,7 @@ bool HttpParser::parseHeaders(
             return false;
         }
 
-        const std::string key =
+        std::string key =
             line.substr(0, colon);
 
         if (!isValidHeaderName(key))
@@ -293,8 +308,10 @@ bool HttpParser::parseHeaders(
         // Preserve the existing duplicate Content-Length policy
         // for this step. Case-insensitive framing validation
         // will be handled separately.
-        if (key == "Content-Length" &&
-            request.headers.find("Content-Length") !=
+        key = toLowerAscii(std::move(key));
+
+        if (key == "content-length" &&
+            request.headers.find("content-length") !=
                 request.headers.end())
         {
             return false;
@@ -307,7 +324,7 @@ bool HttpParser::parseHeaders(
             return false;
         }
 
-        request.headers[key] = value;
+        request.headers.emplace(std::move(key), value);
 
         position = lineEnd + 2;
     }
@@ -368,9 +385,7 @@ ParseStatus HttpParser::parseBody(
     HttpRequest& request,
     std::size_t& bytesConsumed) const
 {
-    const auto it =
-        request.headers.find("Content-Length");
-
+    const auto it = request.headers.find("content-length");
     // Preserve the current server's POST policy.
     if (it == request.headers.end())
     {
